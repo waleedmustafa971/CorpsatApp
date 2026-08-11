@@ -13,6 +13,13 @@ const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
 
 module.exports = ({ config }) => ({
   ...config,
+  extra: {
+    ...(config.extra ?? {}),
+    // FarmMap reads this at runtime. Android's Maps SDK throws a fatal
+    // RuntimeException when the manifest has no API key, so a keyless build
+    // must render the fallback rather than mount a MapView.
+    googleMapsConfigured: Boolean(googleMapsApiKey),
+  },
   plugins: [
     ...(config.plugins ?? []),
     ...(googleMapsApiKey

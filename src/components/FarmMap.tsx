@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   GestureResponderEvent,
@@ -29,16 +30,29 @@ import { LatLng } from '../types';
  * native view is unavailable. Both paths speak the same `[lon, lat]` data flow.
  */
 let Maps: any = null;
-let mapsAvailable = false;
+let moduleLoaded = false;
 if (Platform.OS !== 'web') {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     Maps = require('react-native-maps');
-    mapsAvailable = Boolean(Maps?.default);
+    moduleLoaded = Boolean(Maps?.default);
   } catch {
-    mapsAvailable = false;
+    moduleLoaded = false;
   }
 }
+
+/**
+ * Android renders through Google Maps, whose SDK throws a fatal
+ * `RuntimeException: API key not found` as soon as a MapView is constructed if
+ * the manifest carries no key. Expo Go supplies Expo's own key, but a
+ * standalone build only has one when GOOGLE_MAPS_API_KEY was set at build time
+ * (see app.config.js). Without it we must not mount a MapView at all — so the
+ * fallback renders instead. iOS uses Apple Maps and needs no key.
+ */
+const androidKeyMissing =
+  Platform.OS === 'android' && !Constants.expoConfig?.extra?.googleMapsConfigured;
+
+const mapsAvailable = moduleLoaded && !androidKeyMissing;
 
 export const NATIVE_MAPS_AVAILABLE = mapsAvailable;
 
