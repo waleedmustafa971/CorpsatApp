@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Cropsat",
-    "slug": "cropsat-farmer-app",
+    "slug": "corpsat",
     "version": "1.0.0",
     "scheme": "cropsat",
     "orientation": "portrait",
@@ -32,6 +32,11 @@
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7867667c-30f9-4aef-a198-d2fd91f39f3d"
+      }
     },
     "plugins": [
       "expo-router",

@@ -169,20 +169,22 @@ export async function createFarmSubmission(input: NewFarmInput): Promise<Farm> {
   const now = new Date().toISOString();
   const id = uid('farm');
   const acres = input.landSizeAcres > 0 ? input.landSizeAcres : Number(areaInAcres(input.boundary).toFixed(1));
+  // Same initial rating spread the admin panel's createFarm uses, so a farm
+  // looks identical whichever side registered it.
+  const rating = Number((0.2 + Math.random() * 0.25).toFixed(2));
 
   const farm: Farm = {
     id,
     name: input.name.trim(),
     boundary: input.boundary,
     landSizeAcres: acres,
-    fieldAddress: `${input.state}, Sudan`,
+    fieldAddress: `${input.state} agricultural scheme`,
     state: input.state,
     cropType: input.cropType,
     soilType: input.soilType,
     irrigationType: input.irrigationType,
-    // Risk is assessed by the insurer after approval; start mid-scale.
-    avgRiskRating: 0.5,
-    riskLevel: riskLevelOf(0.5),
+    avgRiskRating: rating,
+    riskLevel: riskLevelOf(rating),
     lastImageUpdate: now,
     companyId: COMPANY_ID,
     farmerIds: [input.farmerId || current.farmer.id],

@@ -150,6 +150,119 @@ payload. The data flow is the same on both paths; only the imagery differs.
 
 ---
 
+## Shipping a standalone APK
+
+The EAS project is `@waleed249/corpsat` (`extra.eas.projectId` in `app.json`).
+
+```bash
+eas login                                          # once, --browser for Google sign-in
+eas build --platform android --profile preview     # → downloadable .apk
+```
+
+The **`preview`** profile in `eas.json` is the shareable one: `distribution: internal`
+plus `buildType: apk` gives a single file anyone can sideload after allowing
+"install from unknown sources". The **`production`** profile builds an `.aab`, which
+is Play Store only and **cannot** be installed directly — don't send that one.
+
+Run it **from this directory**. Running `eas build` from a folder without the app config
+makes EAS scaffold a throwaway project and try to upload whatever directory you're in.
+
+The first build generates an Android keystore; let EAS manage it — every future build of
+this app must be signed with the same one. `eas build:list` retrieves the download link
+afterwards, and every build is listed at
+[expo.dev/accounts/waleed249/projects/corpsat](https://expo.dev/accounts/waleed249/projects/corpsat/builds).
+
+Building locally instead needs **JDK 17+** (`expo prebuild && cd android && ./gradlew
+assembleRelease`). Java 8 will not work with React Native 0.86 / AGP 8.
+
+### Installing the APK on a phone
+
+Send the recipient the **Application Archive URL** from the build (it ends in `.apk`).
+
+1. Open the link **on the Android phone** — Chrome will warn about the file type; choose
+   **Download anyway**.
+2. Tap the downloaded file. Android asks to allow installs from this source: allow it for
+   Chrome (or your Files app), then go back and tap **Install**.
+3. Play Protect may say *"Unsafe app blocked"* because the app isn't from the Play Store.
+   Tap **More details → Install anyway**. This is expected for any sideloaded build and
+   not a sign anything is wrong.
+
+Nothing else is needed — no Expo Go, no dev server, no account.
+
+**iOS cannot be sideloaded this way.** Distributing to an iPhone needs an Apple Developer
+account and TestFlight (`eas build --platform ios --profile preview` plus
+`eas submit --platform ios`).
+
+### Running it as a test app instead of a standalone build
+
+A standalone APK is the right choice for a demo, but it's frozen at build time — every
+change means a new build. These alternatives trade that for faster iteration:
+
+| Option | Needs a build? | Dev server? | Good for |
+|---|---|---|---|
+| Expo Go | No | Yes | Showing someone a change right now |
+| Development build | Once | Yes | Ongoing development on a real device |
+| Internal distribution APK | Every change | No | Handing to a non-technical tester |
+| Play Store internal testing | Every change | No | A real tester group with auto-updates |
+| EAS Update | Once | No | Shipping JS-only fixes to existing installs |
+
+**Expo Go** — no build at all. The tester installs Expo Go from the Play Store, you run
+`npx expo start` and they scan the QR code. Add `--tunnel` if you're not on the same
+network. Maps work here even without your own key, because Expo Go carries Expo's. The
+catch: it only runs while your machine is serving the project.
+
+**Development build** — `eas build --platform android --profile development` produces a
+dev client APK. It behaves like Expo Go but includes this project's own native config, so
+what you test matches what ships. Install it once, then `npx expo start --dev-client`
+and it connects to your Metro server with fast refresh intact.
+
+**Play Store internal testing** — the closest thing to a real test app. Needs a Google
+Play Developer account (one-off $25 fee). Build the app bundle and submit it:
+
+```bash
+eas build --platform android --profile production   # produces .aab
+eas submit --platform android --profile production
+```
+
+Then in Play Console create an **Internal testing** release and add tester emails (up to
+100). They install from the Play Store, get updates automatically, and see none of the
+unknown-sources warnings above.
+
+**EAS Update** — pushes JS and asset changes to already-installed builds without a
+rebuild. Not wired up yet; `expo-updates` is not currently a dependency. To enable it:
+
+```bash
+npx expo install expo-updates
+eas update:configure
+eas build --platform android --profile preview      # one more build to embed the client
+```
+
+After that, `eas update --branch preview` reaches every install of that build. Changes to
+native config — a new package, the Maps key, permissions — still require a rebuild.
+
+### Adding Google Maps to the APK
+
+Standalone Android builds have no Maps key of their own — Expo Go borrows Expo's, which
+is why maps work in development but the tiles come up blank in a built APK. Everything
+else (drawing a boundary, submitting, health scores, persistence) is unaffected, and the
+boundary polygon still draws over the blank canvas.
+
+To fix it:
+
+1. In Google Cloud Console, enable **Maps SDK for Android** and create an API key.
+2. Restrict the key to package `com.cropsat.farmer` and the SHA-1 that
+   `eas credentials` prints for this project.
+3. Store it and rebuild:
+
+```bash
+eas env:create --name GOOGLE_MAPS_API_KEY --value <key> --environment preview
+eas build --platform android --profile preview
+```
+
+`app.config.js` reads `GOOGLE_MAPS_API_KEY` from the environment and only then adds the
+`react-native-maps` config plugin. The key is deliberately not committed — this repo is
+public. For a local build, put it in `.env.local` instead.
+
 ## Mock data
 
 Seeded on first launch and persisted to AsyncStorage under `cropsat.mobile.store.v1`
